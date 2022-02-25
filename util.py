@@ -77,14 +77,14 @@ class Trie:
         transitions, noting whenever it finds a leaf.
         Final list of words is simply all the leaves.
         """
-        output = []
+        output = set()
         for char in charset.elements():
             remaining_chars = drop_member(charset, char)
             cur_vertex = self.roots[char]
             cur_path = cur_vertex.label
             queue = deque(cur_vertex.visit(remaining_chars, cur_path))
             if cur_vertex.is_leaf:
-                output.append(cur_path)
+                output.add(cur_path)
             while len(queue) > 0:
                 cur_vertex, remaining_chars, cur_path = queue.pop()
                 if cur_vertex.is_leaf:
