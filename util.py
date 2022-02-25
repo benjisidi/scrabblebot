@@ -78,7 +78,7 @@ class Trie:
         Final list of words is simply all the leaves.
         """
         output = set()
-        for char in charset.elements():
+        for char in charset.keys():
             remaining_chars = drop_member(charset, char)
             cur_vertex = self.roots[char]
             cur_path = cur_vertex.label
