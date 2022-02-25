@@ -88,7 +88,7 @@ class Trie:
             while len(queue) > 0:
                 cur_vertex, remaining_chars, cur_path = queue.pop()
                 if cur_vertex.is_leaf:
-                    output.append(cur_path)
+                    output.add(cur_path)
                 new_queue = cur_vertex.visit(remaining_chars, cur_path)
                 queue.extend(new_queue)
         return output
