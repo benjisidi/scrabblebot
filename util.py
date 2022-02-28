@@ -1,3 +1,4 @@
+import pickle
 import timeit
 from collections import Counter, deque
 from time import perf_counter
@@ -103,6 +104,15 @@ class Trie:
                 queue.extend(new_queue)
         return output
 
+
+def get_scrabble_trie():
+    graph = Trie()
+    with open("data/official_scrabble_words_2019.txt", "r") as f:
+        corpus = f.read().splitlines()
+    graph.parse_corpus(corpus)
+    return graph
+
+
 # ToDo: Use * to represent blanks.
 # Perform 26 searches with an uppercase version of each letter
 # Store uppercase scores as 0 (on board too)
@@ -110,18 +120,18 @@ if __name__ == "__main__":
     print("Reading corpus from file and parsing...")
     start = perf_counter()
     graph = Trie()
-    stencil = "_e__"
+    stencil = "__"
     word = "anagram"
     with open("data/official_scrabble_words_2019.txt", "r") as f:
         corpus = f.read().splitlines()
     graph.parse_corpus(corpus)
     duration = perf_counter() - start
     print(f"Trie constructed in {duration:.2f}s.")
-    print(
-        f"Finding all valid words with letters {word.upper()}... and stencil {stencil}")
-    timer = timeit.Timer("graph.traverse(Counter('anagram'), '_e__')", globals={
-                         "graph": graph}, setup="from collections import Counter")
-    result = timer.repeat(3, number=500)
-    print(f"500 loops, best of 3: {min(result)/500:.2e} sec per loop")
+    # print(
+    #     f"Finding all valid words with letters {word.upper()}... and stencil {stencil}")
+    # timer = timeit.Timer("graph.traverse(Counter('anagram'), '_e__')", globals={
+    #                      "graph": graph}, setup="from collections import Counter")
+    # result = timer.repeat(3, number=500)
+    # print(f"500 loops, best of 3: {min(result)/500:.2e} sec per loop")
     print(f"Results:")
     print(graph.traverse(Counter(word), stencil))
