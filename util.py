@@ -103,7 +103,9 @@ class Trie:
                 queue.extend(new_queue)
         return output
 
-
+# ToDo: Use * to represent blanks.
+# Perform 26 searches with an uppercase version of each letter
+# Store uppercase scores as 0 (on board too)
 if __name__ == "__main__":
     print("Reading corpus from file and parsing...")
     start = perf_counter()
