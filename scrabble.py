@@ -133,51 +133,17 @@ def get_total_score(word, loc, file, board, letter_multipliers, word_multipliers
 
 
 class ScrabbleGame:
-    def __init__(self, n_players):
+    def __init__(self, n_players, initial_letter_multipliers, initial_row_multipliers, corpus):
         self.rows = ["_"*15]*15
         self.cols = ["_"*15]*15
-        # todo: replace 2s with 1s when played on
-        self.row_letter_multipliers = np.array([
-            [1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1],
-            [1, 1, 1, 1, 1, 3, 1, 1, 1, 3, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1],
-            [2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 3, 1, 1, 1, 3, 1, 1, 1, 3, 1, 1, 1, 3, 1],
-            [1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1],
-            [1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1],
-            [1, 1, 2, 1, 1, 1, 2, 1, 2, 1, 1, 1, 2, 1, 1],
-            [1, 3, 1, 1, 1, 3, 1, 1, 1, 3, 1, 1, 1, 3, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [2, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 2],
-            [1, 1, 1, 1, 1, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 3, 1, 1, 1, 3, 1, 1, 1, 1, 1],
-            [1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1],
-        ])
-        self.row_word_multipliers = np.array([
-            [3, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 3],
-            [1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
-            [1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1],
-            [1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1],
-            [1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [3, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 3],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [1, 1, 1, 1, 2, 1, 1, 1, 1, 1, 2, 1, 1, 1, 1],
-            [1, 1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1, 1],
-            [1, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1, 1],
-            [1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 1],
-            [3, 1, 1, 1, 1, 1, 1, 3, 1, 1, 1, 1, 1, 1, 3],
-        ])
+        self.row_letter_multipliers = np.array(initial_letter_multipliers)
+        self.row_word_multipliers = np.array(initial_row_multipliers)
         self.col_letter_multipliers = self.row_letter_multipliers.T
         self.col_word_multipliers = self.row_word_multipliers.T
         self.current_player = 0
         self.n_players = n_players
         self.scores = [0 for _ in range(n_players)]
-        with open("./data/official_scrabble_words_2019.txt", "r") as f:
-            self.corpus = set(f.read().splitlines())
+        self.corpus = set(corpus)
 
     def save_board(self, filepath: str) -> None:
         pass
@@ -190,9 +156,8 @@ class ScrabbleGame:
         Adds a word to the board and returns the resulting score
         """
         # Check if word is valid
-        # Todo: This check won't work - we need the resulting word(s), not the letters played
-        # if word not in self.corpus:
-        # raise ValueError(f"Invalid word: {word}")
+        if word not in self.corpus:
+            raise ValueError(f"Invalid word: {word}")
         # Check if word clashes with existing tiles
         existing_tiles = np.array(list(
             self.rows[y][x:x+len(word)])) if not vertical else np.array(list(self.cols[x][y:y+len(word)]))
