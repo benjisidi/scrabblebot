@@ -1,17 +1,15 @@
-import pickle
-import timeit
 from collections import Counter, deque
 from time import perf_counter
+import numpy as np
 
 
+# @profile
 def drop_member(charset: Counter, item: str):
     """
     Return a copy of the provided Counter with the item decremented by 1
     The only built-in ways to do this are in-place, which prevents us 
     from using list comprehension in Vertex's visit method.
     """
-    if charset[item] == 0:
-        raise KeyError(f"Item {item} not in charset {charset}")
     new_set = charset.copy()
     new_set[item] -= 1
     return new_set
@@ -44,7 +42,7 @@ class Vertex:
         else:
             return [
                 (vertex, drop_member(allowed_transitions, label), cur_path + label)
-                for label, vertex in self.edges.items() if allowed_transitions[label] > 0
+                for label, vertex in self.edges.items() if label in allowed_transitions and allowed_transitions[label] > 0
             ]
 
     def __repr__(self):
@@ -87,9 +85,19 @@ class Trie:
         transitions, noting whenever it finds a leaf.
         Final list of words is simply all the leaves.
         """
+        charset = dict(charset)
         output = set()
-        for char in charset.keys():
-            remaining_chars = drop_member(charset, char)
+        if stencil[0] == "_":
+            forced_start = False
+            starting_letters = charset.keys()
+        else:
+            forced_start = True
+            starting_letters = [stencil[0]]
+        for char in starting_letters:
+            if not forced_start:
+                remaining_chars = drop_member(charset, char)
+            else:
+                remaining_chars = charset
             cur_vertex = self.roots[char]
             cur_path = cur_vertex.label
             queue = deque(cur_vertex.visit(remaining_chars, cur_path, stencil))
@@ -102,7 +110,7 @@ class Trie:
                 new_queue = cur_vertex.visit(
                     remaining_chars, cur_path, stencil)
                 queue.extend(new_queue)
-        return output
+        return list(output)
 
 
 def get_scrabble_trie():
@@ -135,3 +143,76 @@ if __name__ == "__main__":
     # print(f"500 loops, best of 3: {min(result)/500:.2e} sec per loop")
     print(f"Results:")
     print(graph.traverse(Counter(word), stencil))
+
+
+def get_stencils(row: str, anchor_points: set[int], length: int) -> list[str]:
+    stencils = set()
+    # Walk backwards from start_coord, counting spaces
+    for anchor_point in anchor_points:
+        spaces = 1
+        starting_point = anchor_point
+        while spaces < length and starting_point > 0:
+            starting_point -= 1
+            if row[starting_point] == "_":
+                spaces += 1
+        for i in range(0, anchor_point - starting_point+1):
+            current_anchor = starting_point + i
+            current_letter = current_anchor
+            spaces = 0
+            while spaces < length and current_letter < len(row):
+                if row[current_letter] == "_":
+                    spaces += 1
+                current_letter += 1
+            if spaces == length:
+                stencil = row[current_anchor:current_letter]
+                # Walk backwards from start adding existing letters
+                cur_index = current_anchor
+                cur_index -= 1
+                while cur_index >= 0 and row[cur_index] != "_":
+                    stencil = row[cur_index] + stencil
+                    cur_index -= 1
+                    current_anchor -= 1
+                # Walk forwards from end adding existing letters
+                cur_index = current_letter
+                while cur_index < len(row) and row[cur_index] != "_":
+                    stencil += row[cur_index]
+                    cur_index += 1
+                stencils.add((stencil, current_anchor))
+    return stencils
+
+
+def get_anchor_points(board: list[str]):
+    # Temporarily pad board with 1 space around the outside for edge cases
+    padded_board = board.copy()
+    padded_board.append("_"*15)
+    padded_board.insert(0, "_"*15)
+    for i, row in enumerate(padded_board):
+        padded_board[i] = "_" + row + "_"
+    row_anchor_points = [set() for _ in padded_board]
+    for i, row in enumerate(padded_board):
+        for j, letter in enumerate(row):
+            if letter != "_":
+                if row[j-1] == "_":
+                    row_anchor_points[i].add(j-1)
+                if row[j+1] == "_":
+                    row_anchor_points[i].add(j+1)
+                if padded_board[i-1][j] == "_":
+                    row_anchor_points[i-1].add(j)
+                if padded_board[i+1][j] == "_":
+                    row_anchor_points[i+1].add(j)
+    row_anchor_points = row_anchor_points[1:-1]
+    for i in range(len(row_anchor_points)):
+        row_anchor_points[i] = set(
+            map(lambda x: x-1, filter(lambda x: x > 0 and x < 15, row_anchor_points[i])))
+    col_anchor_points = [set() for _ in board]
+    for col in range(len(board)):
+        for i, row in enumerate(row_anchor_points):
+            if col in row:
+                col_anchor_points[col].add(i)
+    return row_anchor_points, col_anchor_points
+
+
+def transpose_board(board):
+    split_board = np.array([list(x) for x in board])
+    transposed_board = ["".join(x) for x in split_board.T]
+    return transposed_board
