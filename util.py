@@ -7,15 +7,14 @@ from trie import Trie
 
 
 @cache
-def get_scrabble_trie():
+def get_scrabble_trie(corpus_loc):
     """
-    Returns a (possibly cached) copy of the official
-    scrabble words trie.
+    Returns a (possibly cached) copy of the corpus' trie
     Unfortunately pickling the trie is only marginally
     faster than re-parsing the corpus.
     """
     graph = Trie()
-    with open("data/official_scrabble_words_2019.txt", "r") as f:
+    with open(corpus_loc, "r") as f:
         corpus = f.read().splitlines()
     graph.parse_corpus(corpus)
     return graph

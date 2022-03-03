@@ -2,13 +2,14 @@ import json
 import pickle
 
 import numpy as np
-from greedyAgent import GreedyAgent
+
 from game import ScrabbleGame
+from greedyAgent import GreedyAgent
 from util import get_scrabble_trie, stringify_counter
 
 
 class ScrabbleEnv:
-    def __init__(self, agents, trie, random_state=None):
+    def __init__(self, agents, corpus_file, random_state=None):
         if random_state:
             np.random.set_state(random_state)
         else:
@@ -16,8 +17,9 @@ class ScrabbleEnv:
                 pickle.dump(np.random.get_state(), f)
         with open("./data/constants.json", "r") as f:
             constants = json.loads(f.read())
-        with open("./data/official_scrabble_words_2019.txt", "r") as f:
+        with open(corpus_file, "r") as f:
             corpus = f.read().splitlines()
+        trie = get_scrabble_trie(corpus_file)
         self.game = ScrabbleGame(len(agents), constants, corpus)
         self.agents = [Agent(trie) for Agent in agents]
         self.game_over = False
@@ -41,8 +43,8 @@ class ScrabbleEnv:
 if __name__ == "__main__":
     # with open("./logs/prev_state.pickle", "rb") as f:
     #     state = pickle.load(f)
-    trie = get_scrabble_trie()
-    env = ScrabbleEnv([GreedyAgent, GreedyAgent], trie)
+    corpus_file = "data/official_scrabble_words_2019.txt"
+    env = ScrabbleEnv([GreedyAgent, GreedyAgent], corpus_file)
     while not env.game_over:
         env.step()
         env.game.show()
