@@ -1,65 +1,49 @@
-from itertools import count
-import os
-from collections import Counter
 import json
+import pickle
+from random import random
 
 import numpy as np
-from player import Agent
+from player import GreedyAgent
 from game import ScrabbleGame
-from util import get_anchor_points, get_scrabble_trie
-
-
-def get_rack(str):
-    rack = {}
-    for char in str:
-        if char in rack:
-            rack[char] += 1
-        else:
-            rack[char] = 1
+from util import get_scrabble_trie, stringify_counter
 
 
 class ScrabbleEnv:
-    def __init__(self, n_players, trie):
+    def __init__(self, agents, trie, random_state=None):
+        if random_state:
+            np.random.set_state(random_state)
+        else:
+            with open("./logs/prev_state.pickle", "wb") as f:
+                pickle.dump(np.random.get_state(), f)
         with open("./data/constants.json", "r") as f:
             constants = json.loads(f.read())
         with open("./data/official_scrabble_words_2019.txt", "r") as f:
             corpus = f.read().splitlines()
-        trie = trie
-        self.game = ScrabbleGame(n_players, constants, corpus)
-        starting_racks = [Counter(self.game.draw_letters(7))
-                          for _ in range(n_players)]
-        self.agents = [Agent(starting_racks[i], trie)
-                       for i in range(n_players)]
-        self.agents_passed = [False for _ in self.agents]
+        self.game = ScrabbleGame(len(agents), constants, corpus)
+        self.agents = [Agent(trie) for Agent in agents]
         self.game_over = False
 
+    def reset(self):
+        self.game.reset()
+
     def step(self):
-        agent = self.agents[self.game.current_player]
-        played_word, score, vertical, length = agent.step(self.game)
+        player_index = self.game.current_player
+        agent = self.agents[player_index]
+        # Print rack as str
+        print(stringify_counter(self.game.racks[player_index]))
+        played_word, score, vertical = agent.step(self.game)
         print(played_word, score)
-        if played_word is None:
-            print("No words found")
-            self.agents_passed[self.game.current_player] = True
-            self.game.current_player = (
-                self.game.current_player + 1) % self.game.n_players
-            if np.all(self.agents_passed):
-                self.game_over = True
-                print("Game over: stalemate")
-            return False, 0
+        if played_word:
+            self.game_over = self.game.play(*played_word, vertical=vertical)
         else:
-            self.game.play(*played_word, vertical=vertical)
-            self.agents_passed = [False for _ in self.agents]
-            agent.update_rack(self.game.draw_letters(length))
-            if len(agent.rack) == 0:
-                print("Game over: player emptied rack")
-                self.game_over = True
-                return False, 0
-            return played_word, score
+            self.game_over = self.game.pass_turn()
 
 
 if __name__ == "__main__":
+    # with open("./logs/prev_state.pickle", "rb") as f:
+    #     state = pickle.load(f)
     trie = get_scrabble_trie()
-    env = ScrabbleEnv(2, trie)
+    env = ScrabbleEnv([GreedyAgent, GreedyAgent], trie)
     while not env.game_over:
-        word, score = env.step()
+        env.step()
         env.game.show()

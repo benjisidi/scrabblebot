@@ -1,71 +1,14 @@
-from collections import Counter
 import json
 import string
-from matplotlib.colors import ListedColormap
+from collections import Counter
+
 import matplotlib.pyplot as plt
-from matplotlib.transforms import ScaledTranslation, IdentityTransform
 import numpy as np
+from matplotlib.colors import ListedColormap
+from matplotlib.transforms import IdentityTransform, ScaledTranslation
 
-from util import get_anchor_points, transpose_board
-
-
-class ConstrainedSet(set):
-    def __init__(self, minVal, maxVal):
-        self.minVal = minVal
-        self.maxVal = maxVal
-
-    def add(self, val):
-        if val >= self.minVal and val <= self.maxVal:
-            super().add(val)
-
-
-def get_secondary_words(word: str, loc: int, file: int, board: list[str]):
-    secondary_words = []
-    character_list = np.array(list(word))
-    existing_chars = np.array(list(board[file][loc:loc+len(word)]))
-    played_characters = np.where(
-        character_list != existing_chars, character_list, "_")
-    updated_board = board.copy()
-    updated_board[file] = updated_board[file][:loc] + \
-        word + updated_board[file][loc+len(word):]
-    for i, letter in enumerate(played_characters):
-        if letter != "_":
-            secondary_word = ""
-            anchor = loc + i
-            start = file
-            end = file + 1
-            while start >= 0 and updated_board[start][anchor] != "_":
-                secondary_word = updated_board[start][anchor] + secondary_word
-                start -= 1
-            while end < len(updated_board) and updated_board[end][anchor] != "_":
-                secondary_word += updated_board[end][anchor]
-                end += 1
-            if len(secondary_word) > 1:
-                secondary_words.append((secondary_word, start + 1, anchor))
-    return secondary_words
-
-
-def get_word_score(word, loc, file, letter_multipliers, word_multipliers, score_lookup):
-    letter_values = np.sum(np.array(list(map(lambda x: score_lookup[x], list(
-        word)))) * letter_multipliers[file][loc:loc+len(word)])
-    score = letter_values * np.prod(
-        word_multipliers[file][loc:loc+len(word)])
-    return score
-
-
-def get_total_score(word, loc, file, board, letter_multipliers, word_multipliers, letter_multipliers_perp, word_multipliers_perp, score_lookup):
-    total_score = 0
-    existing_tiles = np.array(list(board[file][loc:loc+len(word)]))
-    n_played_tiles = np.sum(np.where(existing_tiles == "_", 1, 0))
-    if n_played_tiles == 7:
-        total_score += 50
-    total_score += get_word_score(word, loc, file,
-                                  letter_multipliers, word_multipliers, score_lookup)
-    secondary_words = get_secondary_words(word, loc, file, board)
-    for word, loc, file in secondary_words:
-        total_score += get_word_score(word, loc, file,
-                                      letter_multipliers_perp, word_multipliers_perp, score_lookup)
-    return total_score
+from util import (get_anchor_points, get_secondary_words, get_total_score,
+                  transpose_board)
 
 
 class ScrabbleGame:
@@ -84,6 +27,21 @@ class ScrabbleGame:
         self.corpus = set(corpus)
         self.score_lookup = constants["scores"]
         self.bag = Counter(constants["freqs"])
+        self.racks = [Counter(self.draw_letters(7)) for _ in range(n_players)]
+        self.players_passed = [False for _ in range(n_players)]
+        self.game_over = False
+
+    def reset(self, constants):
+        self.row_letter_multipliers = np.array(
+            constants["initial_letter_multipliers"])
+        self.row_word_multipliers = np.array(
+            constants["initial_word_multipliers"])
+        self.scores = [0 for _ in range(self.n_players)]
+        self.bag = Counter(constants["freqs"])
+        self.racks = [Counter(self.draw_letters(7))
+                      for _ in range(self.n_players)]
+        self.players_passed = [False for _ in range(self.n_players)]
+        self.game_over = False
 
     def draw_letters(self, n):
         alphabet = list(string.ascii_lowercase)
@@ -133,7 +91,15 @@ class ScrabbleGame:
             score_lookup=self.score_lookup
         )
 
-    def play(self, word: str, loc: int, file: int, vertical=False) -> None:
+    def pass_turn(self) -> bool:
+        self.players_passed[self.current_player] = True
+        if np.all(self.players_passed):
+            self.game_over = True
+        # Increment the current player
+        self.current_player = (self.current_player + 1) % self.n_players
+        return self.game_over
+
+    def play(self, word: str, loc: int, file: int, vertical=False) -> bool:
         """
         Adds a word to the board
         """
@@ -151,9 +117,11 @@ class ScrabbleGame:
         # Check if word clashes with existing tiles
         existing_tiles = np.array(list(board[file][loc:loc+len(word)]))
         word_chars = np.array(list(word))
-        existing_tiles = np.where(
+        letters_played = "".join(np.where(
+            existing_tiles == "_", word_chars, ""))
+        resulting_word = np.where(
             existing_tiles == "_", word_chars, existing_tiles)
-        if not np.all(word_chars == existing_tiles):
+        if not np.all(word_chars == resulting_word):
             raise ValueError(
                 f"Word {word} cannot be played in position [{file},{loc}] {vertical and '(vertical)' or ''}: conflicting tiles")
         # Check length
@@ -164,7 +132,6 @@ class ScrabbleGame:
         # Get score and add it to player's total
         score = self.get_score(word, loc, file, vertical)
         self.scores[self.current_player] += score
-        self.current_player = (self.current_player + 1) % self.n_players
 
         # Add word to file
         board[file] = f"{board[file][:loc]}{word}{board[file][loc+len(word):]}"
@@ -184,6 +151,25 @@ class ScrabbleGame:
             self.row_letter_multipliers = letter_multipliers
             self.col_letter_multipliers = letter_multipliers.T
 
+        # Update player's rack
+        self.racks[self.current_player] -= Counter(letters_played)
+        self.racks[self.current_player] += Counter(
+            self.draw_letters(len(letters_played)))
+        # End the game if both the rack and bag are empty
+        if self.racks[self.current_player].total() == 0 and self.bag.total() == 0:
+            # Endgame scoring
+            for i, rack in enumerate(self.racks):
+                score = 0
+                for (char, cnt) in rack.items():
+                    score += cnt * self.score_lookup[char]
+                self.scores[i] -= score
+                self.scores[self.current_player] += score
+            self.game_over = True
+
+        # Increment the current player
+        self.current_player = (self.current_player + 1) % self.n_players
+        return self.game_over
+
     def show(self):
         scrabble_colormap = [
             [0.75, 0.69, 0.584],  # Tiles: Beige
@@ -193,7 +179,8 @@ class ScrabbleGame:
             [0.78, 0.855, 0.914],  # DL: Light blue
             [0.416, 0.721, 0.886],  # TL: Dark blue
         ]
-        _, ax = plt.subplots()
+        fig, ax = plt.subplots()
+        fig.set_size_inches(10, 10)
         # Transform multipliers to get unique value for each tile type
         data = self.row_letter_multipliers*2 + self.row_word_multipliers*0.5
         # Map tile values to 1 -> 5, with 0 being played letters (so colormap works nicely)
@@ -202,7 +189,7 @@ class ScrabbleGame:
         data[7, 7] = 0
         data = np.where(np.array([list(x) for x in self.rows]) != "_", 0, data)
         # Display board using custom colors
-        im = ax.imshow(data, cmap=ListedColormap(scrabble_colormap))
+        ax.imshow(data, cmap=ListedColormap(scrabble_colormap))
         ax.set_xticks(np.arange(15)-.5, labels=[""]*15)
         ax.set_yticks(np.arange(15)-.5, labels=[""]*15)
         ax.grid(which="major", color="w", linestyle="-", linewidth=1)
