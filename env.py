@@ -4,7 +4,8 @@ import pickle
 import numpy as np
 
 from game import ScrabbleGame
-from greedyAgent import GreedyAgent
+from agents.greedyAgent import GreedyAgent
+from agents.longestWordAgent import LongestWordAgent
 from util import get_scrabble_trie, stringify_counter
 
 
@@ -30,6 +31,7 @@ class ScrabbleEnv:
     def step(self):
         player_index = self.game.current_player
         agent = self.agents[player_index]
+        print(agent.__class__.__name__)
         # Print rack as str
         print(stringify_counter(self.game.racks[player_index]))
         played_word, score, vertical = agent.step(self.game)
@@ -44,7 +46,7 @@ if __name__ == "__main__":
     # with open("./logs/prev_state.pickle", "rb") as f:
     #     state = pickle.load(f)
     corpus_file = "data/official_scrabble_words_2019.txt"
-    env = ScrabbleEnv([GreedyAgent, GreedyAgent], corpus_file)
+    env = ScrabbleEnv([LongestWordAgent, GreedyAgent], corpus_file)
     while not env.game_over:
         env.step()
         env.game.show()
