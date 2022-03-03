@@ -44,12 +44,12 @@ class ScrabbleGame:
         self.game_over = False
 
     def draw_letters(self, n):
-        alphabet = list(string.ascii_lowercase)
+        alphabet = list(string.ascii_lowercase+"*")
         letters = ""
         alphabet_counts = list(map(lambda x: self.bag[x], alphabet))
         for _ in range(min(n, self.bag.total())):
             letter = np.random.choice(
-                list(string.ascii_lowercase),
+                list(string.ascii_lowercase+"*"),
                 p=alphabet_counts/np.sum(alphabet_counts)
             )
             self.bag[letter] -= 1
@@ -104,7 +104,7 @@ class ScrabbleGame:
         Adds a word to the board
         """
         # Check if word is valid
-        if word not in self.corpus:
+        if word.lower() not in self.corpus:
             raise ValueError(f"Invalid word: {word}")
         if vertical:
             board = self.cols
@@ -152,7 +152,14 @@ class ScrabbleGame:
             self.col_letter_multipliers = letter_multipliers.T
 
         # Update player's rack
-        self.racks[self.current_player] -= Counter(letters_played)
+        # if not all letters are lowercase, at least one blank was used
+        if not letters_played.islower():
+            nonblanks = "".join(x for x in letters_played if x.islower())
+            n_blanks = len(letters_played) - len(nonblanks)
+            self.racks[self.current_player] -= Counter(nonblanks)
+            self.racks[self.current_player]["*"] -= n_blanks
+        else:
+            self.racks[self.current_player] -= Counter(letters_played)
         self.racks[self.current_player] += Counter(
             self.draw_letters(len(letters_played)))
         # End the game if both the rack and bag are empty

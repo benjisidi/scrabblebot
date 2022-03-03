@@ -1,4 +1,5 @@
 from collections import Counter, deque
+import string
 
 
 def drop_member(charset: dict, item: str):
@@ -8,7 +9,10 @@ def drop_member(charset: dict, item: str):
     from using list comprehension in Vertex's visit method.
     """
     new_set = charset.copy()
-    new_set[item] -= 1
+    if new_set[item] == 1:
+        del new_set[item]
+    else:
+        new_set[item] -= 1
     return new_set
 
 
@@ -37,10 +41,19 @@ class Vertex:
             else:
                 return [(self.edges[next_char], allowed_transitions, cur_path + next_char)]
         else:
-            return [
-                (vertex, drop_member(allowed_transitions, label), cur_path + label)
-                for label, vertex in self.edges.items() if label in allowed_transitions and allowed_transitions[label] > 0
-            ]
+            next_nodes = []
+            for label, vertex in self.edges.items():
+                if label in allowed_transitions and allowed_transitions[label] > 0:
+                    next_nodes.append((vertex, drop_member(
+                        allowed_transitions, label), cur_path + label))
+            # If we have a blank, we want to try using it in every possible position
+            # even those we have letters for, as using those letters later may net
+            # us more points due to board modifiers
+            if "*" in allowed_transitions and allowed_transitions["*"] > 0:
+                for label, vertex in self.edges.items():
+                    next_nodes.append((vertex, drop_member(
+                        allowed_transitions, "*"), cur_path + label.upper()))
+            return next_nodes
 
     def __repr__(self):
         return f"label: {self.label}, is_leaf: {self.is_leaf}"
@@ -86,17 +99,26 @@ class Trie:
         output = set()
         if stencil[0] == "_":
             forced_start = False
-            starting_letters = charset.keys()
+            if "*" in charset:
+                starting_charset = charset.copy()
+                del starting_charset["*"]
+                starting_letters = "".join(
+                    starting_charset.keys()) + string.ascii_uppercase
+            else:
+                starting_letters = charset.keys()
         else:
             forced_start = True
             starting_letters = [stencil[0]]
         for char in starting_letters:
             if not forced_start:
-                remaining_chars = drop_member(charset, char)
+                if char.isupper():
+                    remaining_chars = drop_member(charset, "*")
+                else:
+                    remaining_chars = drop_member(charset, char)
             else:
                 remaining_chars = charset
-            cur_vertex = self.roots[char]
-            cur_path = cur_vertex.label
+            cur_vertex = self.roots[char.lower()]
+            cur_path = char
             queue = deque(cur_vertex.visit(remaining_chars, cur_path, stencil))
             if cur_vertex.is_leaf and cur_vertex.depth == len(stencil) - 1:
                 output.add(cur_path)
