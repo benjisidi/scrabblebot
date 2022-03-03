@@ -1,9 +1,8 @@
 import json
 import pickle
-from random import random
 
 import numpy as np
-from player import GreedyAgent
+from greedyAgent import GreedyAgent
 from game import ScrabbleGame
 from util import get_scrabble_trie, stringify_counter
 
