@@ -4,8 +4,8 @@ import pickle
 import numpy as np
 
 from game import ScrabbleGame
-from agents.greedyAgent import GreedyAgent
-from agents.longestWordAgent import LongestWordAgent
+from agents.greedy import GreedyAgent
+from agents.longestWord import LongestWordAgent
 from util import get_scrabble_trie, stringify_counter
 
 
@@ -34,10 +34,10 @@ class ScrabbleEnv:
         print(agent.__class__.__name__)
         # Print rack as str
         print(stringify_counter(self.game.racks[player_index]))
-        played_word, score, vertical = agent.step(self.game)
+        played_word, score = agent.step(self.game)
         print(played_word, score)
         if played_word:
-            self.game_over = self.game.play(*played_word, vertical=vertical)
+            self.game_over = self.game.play(*played_word)
         else:
             self.game_over = self.game.pass_turn()
 

@@ -108,7 +108,8 @@ def get_file_words(rack, board, file, anchors, length, scoring_fn, trie, vertica
         stencil_words = trie.traverse(rack, stencil)
         scores = [scoring_fn(word, anchor, file, vertical)
                   for word in stencil_words]
-        stencil_words = map(lambda word: (word, anchor, file), stencil_words)
+        stencil_words = map(lambda word: (
+            word, anchor, file, vertical), stencil_words)
         words.extend(
             filter(lambda word: word[1] > 0, zip(stencil_words, scores)))
     return words
@@ -116,8 +117,7 @@ def get_file_words(rack, board, file, anchors, length, scoring_fn, trie, vertica
 
 def get_playable_words(game, trie: Trie):
     rack = game.racks[game.current_player]
-    horizontal_words = []
-    vertical_words = []
+    playable_words = []
     board = game.rows
     row_anchor_points, col_anchor_points = get_anchor_points(board)
     # Turn 0: no letters on board, need to add anchor in centre
@@ -135,7 +135,7 @@ def get_playable_words(game, trie: Trie):
                 scoring_fn=game.get_score,
                 trie=trie
             )
-            horizontal_words.extend(words)
+            playable_words.extend(words)
     board = game.cols
     for length in range(2, 8):
         for col_index, anchors in enumerate(col_anchor_points):
@@ -149,8 +149,8 @@ def get_playable_words(game, trie: Trie):
                 trie=trie,
                 vertical=True
             )
-            vertical_words.extend(words)
-    return horizontal_words, vertical_words
+            playable_words.extend(words)
+    return playable_words
 
 
 def stringify_counter(counter: Counter):
