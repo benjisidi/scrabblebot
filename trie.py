@@ -1,5 +1,6 @@
 from collections import Counter, deque
 import string
+from functools import cache
 
 
 def drop_member(charset: dict, item: str):
@@ -27,7 +28,7 @@ class Vertex:
         self.edges = self.edges[vertex.label] = vertex
 
     # @profile
-    def visit(self, allowed_transitions: Counter, cur_path: str, stencil: str):
+    def visit(self, allowed_transitions: dict, cur_path: str, stencil: str):
         """
         Collect all the edges that match the allowed transitions.
         Returns (new_vertex, remaining_transitions, updated_path) for each.

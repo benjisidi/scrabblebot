@@ -1,7 +1,7 @@
 import json
 import string
 from collections import Counter
-
+from copy import deepcopy
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import ListedColormap
@@ -27,7 +27,7 @@ class ScrabbleGame:
         self.corpus = set(corpus)
         self.score_lookup = constants["scores"]
         self.bag = Counter(constants["freqs"])
-        self.racks = [Counter(self.draw_letters(7)) for _ in range(n_players)]
+        self.racks = [self.draw_letters(7) for _ in range(n_players)]
         self.players_passed = [False for _ in range(n_players)]
         self.game_over = False
 
@@ -38,24 +38,26 @@ class ScrabbleGame:
             constants["initial_word_multipliers"])
         self.scores = [0 for _ in range(self.n_players)]
         self.bag = Counter(constants["freqs"])
-        self.racks = [Counter(self.draw_letters(7))
+        self.racks = [self.draw_letters(7)
                       for _ in range(self.n_players)]
         self.players_passed = [False for _ in range(self.n_players)]
         self.game_over = False
 
-    def draw_letters(self, n):
+    def draw_letters(self, n, letter_pool=None):
+        if letter_pool is None:
+            letter_pool = self.bag
         alphabet = list(string.ascii_lowercase+"*")
         letters = ""
-        alphabet_counts = list(map(lambda x: self.bag[x], alphabet))
-        for _ in range(min(n, self.bag.total())):
+        alphabet_counts = list(map(lambda x: letter_pool[x], alphabet))
+        for _ in range(min(n, letter_pool.total())):
             letter = np.random.choice(
                 list(string.ascii_lowercase+"*"),
                 p=alphabet_counts/np.sum(alphabet_counts)
             )
-            self.bag[letter] -= 1
-            alphabet_counts = list(map(lambda x: self.bag[x], alphabet))
+            letter_pool[letter] -= 1
+            alphabet_counts = list(map(lambda x: letter_pool[x], alphabet))
             letters += letter
-        return letters
+        return Counter(letters)
 
     def save_board(self, filepath: str) -> None:
         pass
@@ -99,7 +101,26 @@ class ScrabbleGame:
         self.current_player = (self.current_player + 1) % self.n_players
         return self.game_over
 
-    def play(self, word: str, loc: int, file: int, vertical=False) -> bool:
+    def ghost_play(self, word: str, loc: int, file: int, vertical=False):
+        ghost_game = deepcopy(self)
+        ghost_game.play(word, loc, file, vertical, ghost=True)
+        return ghost_game
+
+    def ghost_rack(self, visible_rack):
+        """
+        This method is used when this instance is a "ghost game".
+        Allocates the current player a new random rack from the pool
+        of unseen letters
+        """
+        letter_pool = Counter()
+        letter_pool += self.bag
+        for i, rack in enumerate(self.racks):
+            if i != visible_rack:
+                letter_pool += rack
+        self.racks[self.current_player] = self.draw_letters(
+            7, letter_pool=letter_pool)
+
+    def play(self, word: str, loc: int, file: int, vertical=False, ghost=False) -> bool:
         """
         Adds a word to the board
         """
@@ -151,7 +172,7 @@ class ScrabbleGame:
             self.row_letter_multipliers = letter_multipliers
             self.col_letter_multipliers = letter_multipliers.T
 
-        # Update player's rack
+        # Update player's rack. If ghost playing, don't draw new letters.
         # if not all letters are lowercase, at least one blank was used
         if not letters_played.islower():
             nonblanks = "".join(x for x in letters_played if x.islower())
@@ -160,8 +181,9 @@ class ScrabbleGame:
             self.racks[self.current_player]["*"] -= n_blanks
         else:
             self.racks[self.current_player] -= Counter(letters_played)
-        self.racks[self.current_player] += Counter(
-            self.draw_letters(len(letters_played)))
+        if not ghost:
+            self.racks[self.current_player] += self.draw_letters(
+                len(letters_played))
         # End the game if both the rack and bag are empty
         if self.racks[self.current_player].total() == 0 and self.bag.total() == 0:
             # Endgame scoring
@@ -173,6 +195,8 @@ class ScrabbleGame:
                 self.scores[self.current_player] += score
             self.game_over = True
 
+        # Reset players passed end condition, since the board has changed
+        self.players_passed = [False for _ in range(self.n_players)]
         # Increment the current player
         self.current_player = (self.current_player + 1) % self.n_players
         return self.game_over

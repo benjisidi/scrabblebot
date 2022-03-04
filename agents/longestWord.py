@@ -10,6 +10,8 @@ class LongestWordAgent:
 
     def step(self, game: ScrabbleGame):
         all_words = get_playable_words(game, self.trie)
+        if len(all_words) == 0:
+            return False, 0
         longest_word, longest_score = all_words[np.argmax(
             list(map(lambda x: len(x[0][0]), all_words))
         )]

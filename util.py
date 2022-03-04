@@ -1,5 +1,7 @@
 from collections import Counter
-from functools import cache
+from functools import cache, partial
+from itertools import starmap
+from multiprocessing import Pool
 from time import perf_counter
 import numpy as np
 
