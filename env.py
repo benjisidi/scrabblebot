@@ -3,7 +3,7 @@ import pickle
 from pprint import pprint
 from time import perf_counter
 import numpy as np
-from tqdm import trange
+from tqdm import trange, tqdm
 
 from game import ScrabbleGame
 from agents.greedy import GreedyAgent
@@ -55,12 +55,15 @@ if __name__ == "__main__":
     # state = np.random.get_state()
     turn_times = []
 
+    def stochasticAgent(x): return StochasticLookaheadAgent(
+        x, n_candidates=4, n_samples=300)
     for repeat in trange(10):
-        env = ScrabbleEnv([GreedyAgent, GreedyAgent],
+        env = ScrabbleEnv([GreedyAgent, stochasticAgent],
                           corpus_file)
         while not env.game_over:
             t = env.step()
+            # env.game.show(label_files=True)
             turn_times.append(t)
-        print(env.game.scores)
+        tqdm.write(str(env.game.scores))
     print(f"Times after {len(turn_times)} turns:")
     print(f"Min: {np.min(turn_times)}\tMax: {np.max(turn_times)}\tAvg: {np.mean(turn_times)}\tStd:{np.std(turn_times)}")

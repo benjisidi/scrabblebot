@@ -1,0 +1,4 @@
+trie:
+  ☐ Switch to list-based stencils w/ allowed characters
+stencils:
+  ☐ Find secondaries and make stencils [["_"], ["a", "b"]]

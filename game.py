@@ -120,6 +120,27 @@ class ScrabbleGame:
         self.racks[self.current_player] = self.draw_letters(
             7, letter_pool=letter_pool)
 
+    def generate_ghost_racks(self, n, visible_rack):
+        letter_pool = Counter()
+        letter_pool += self.bag
+        for i, rack in enumerate(self.racks):
+            if i != visible_rack:
+                letter_pool += rack
+        ghost_racks = [self.draw_letters(
+            7, letter_pool=letter_pool) for i in range(10000)]
+        output_racks = [ghost_racks[0]]
+        output_simils = np.zeros((n-1, 10000))
+        output_simils[0] = [(ghost_racks[0] & rack).total()
+                            for rack in ghost_racks]
+        output_simils[0][0] = np.inf
+        for j in range(1, n-1):
+            least_similar = np.argmin(
+                np.sum(output_simils, axis=0))
+            output_racks.append(ghost_racks[least_similar])
+            output_simils[j] = [(output_racks[j] & rack).total()
+                                for rack in ghost_racks]
+            output_simils[0][least_similar] = np.inf
+
     def play(self, word: str, loc: int, file: int, vertical=False, ghost=False) -> bool:
         """
         Adds a word to the board
@@ -201,7 +222,7 @@ class ScrabbleGame:
         self.current_player = (self.current_player + 1) % self.n_players
         return self.game_over
 
-    def show(self):
+    def show(self, label_files=False):
         scrabble_colormap = [
             [0.75, 0.69, 0.584],  # Tiles: Beige
             [0, 0.25, 0.274],  # board: Green
@@ -221,8 +242,12 @@ class ScrabbleGame:
         data = np.where(np.array([list(x) for x in self.rows]) != "_", 0, data)
         # Display board using custom colors
         ax.imshow(data, cmap=ListedColormap(scrabble_colormap))
-        ax.set_xticks(np.arange(15)-.5, labels=[""]*15)
-        ax.set_yticks(np.arange(15)-.5, labels=[""]*15)
+        if label_files:
+            ax.set_xticks(np.arange(15)-.5, labels=list(range(15)))
+            ax.set_yticks(np.arange(15)-.5, labels=list(range(15)))
+        else:
+            ax.set_xticks(np.arange(15)-.5, labels=[""]*15)
+            ax.set_yticks(np.arange(15)-.5, labels=[""]*15)
         ax.grid(which="major", color="w", linestyle="-", linewidth=1)
         for i, row in enumerate(self.rows):
             for j, char in enumerate(row):

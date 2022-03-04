@@ -1,11 +1,15 @@
 from collections import Counter
-from functools import cache, partial
-from itertools import starmap
-from multiprocessing import Pool
+from functools import cache
 from time import perf_counter
 import numpy as np
 
-from trie import Trie
+from trie import LengthAwareTrie, Trie
+
+
+def transpose_board(board):
+    split_board = np.array([list(x) for x in board])
+    transposed_board = ["".join(x) for x in split_board.T]
+    return transposed_board
 
 
 @cache
@@ -15,11 +19,110 @@ def get_scrabble_trie(corpus_loc):
     Unfortunately pickling the trie is only marginally
     faster than re-parsing the corpus.
     """
-    graph = Trie()
+    graph = LengthAwareTrie()
     with open(corpus_loc, "r") as f:
         corpus = f.read().splitlines()
     graph.parse_corpus(corpus)
     return graph
+
+
+def get_secondary_template(board: list[str], file: int, anchor_point: int) -> str:
+    secondary_template = "_"
+    start = file - 1
+    end = file + 1
+    while start >= 0 and board[start][anchor_point] != "_":
+        secondary_template = board[start][anchor_point] + secondary_template
+        start -= 1
+    while end < len(board) and board[end][anchor_point] != "_":
+        secondary_template += board[end][anchor_point]
+        end += 1
+    return secondary_template
+
+
+def get_anchor_allowed_chars(board, board_anchor_points: list[list[set[int]]], rack: Counter, trie: Trie):
+    transposed_board = transpose_board(board)
+    anchor_allowed_chars = [{}, {}]
+    row_anchor_points, col_anchor_points = board_anchor_points
+    for file in range(len(board)):
+        for anchor_point in row_anchor_points[file]:
+            """
+            If I place one letter on this anchor point, which secondary
+            words do I make? => which letters are allowed here?
+            """
+            secondary_template = get_secondary_template(
+                board, file, anchor_point)
+            if len(secondary_template) > 1:
+                allowed_chars = trie.get_allowed_chars(
+                    charset=rack, stencil=secondary_template)
+                anchor_allowed_chars[0][(file, anchor_point)
+                                        ] = frozenset(allowed_chars)
+        for anchor_point in col_anchor_points[file]:
+            secondary_template = get_secondary_template(
+                transposed_board, file, anchor_point)
+            if len(secondary_template) > 1:
+                allowed_chars = trie.get_allowed_chars(
+                    charset=rack, stencil=secondary_template)
+                anchor_allowed_chars[1][(file, anchor_point)
+                                        ] = frozenset(allowed_chars)
+    return anchor_allowed_chars
+
+
+def get_reduced_stencils(board, file: int, anchor_points: set[int], length: int, anchor_allowed_chars):
+    stencils = set()
+    # Walk backwards from start_coord, counting spaces
+    row = board[file]
+    for anchor_point in anchor_points:
+        spaces = 1
+        starting_point = anchor_point
+        while spaces < length and starting_point > 0:
+            starting_point -= 1
+            if row[starting_point] == "_":
+                spaces += 1
+        # Now that we have a starting point, walk forwards until we've
+        # found the requisite number of spaces
+        for i in range(0, anchor_point - starting_point+1):
+            current_anchor = starting_point + i
+            current_letter = current_anchor
+            spaces = 0
+            while spaces < length and current_letter < len(row):
+                if row[current_letter] == "_":
+                    spaces += 1
+                current_letter += 1
+            # If we've found the correct number of spaces, add adjacent
+            # letters to either end of the stencil
+            if spaces == length:
+                stencil = row[current_anchor:current_letter]
+                # Walk backwards from start adding existing letters
+                cur_index = current_anchor
+                cur_index -= 1
+                while cur_index >= 0 and row[cur_index] != "_":
+                    stencil = row[cur_index] + stencil
+                    cur_index -= 1
+                    current_anchor -= 1
+                # Walk forwards from end adding existing letters
+                cur_index = current_letter
+                while cur_index < len(row) and row[cur_index] != "_":
+                    stencil += row[cur_index]
+                    cur_index += 1
+                new_stencil = []
+                for i, char in enumerate(stencil):
+                    stencil_valid = True
+                    if char != "_":
+                        new_stencil.append(char)
+                    else:
+                        loc = current_anchor + i
+                        if (file, loc) in anchor_allowed_chars:
+                            allowed_chars = anchor_allowed_chars[file, loc]
+                            if len(allowed_chars) == 0:
+                                stencil_valid = False
+                                break
+                            new_stencil.append(anchor_allowed_chars[file, loc])
+                        else:
+                            new_stencil.append("_")
+                if stencil_valid:
+                    new_stencil = tuple(new_stencil)
+                    stencils.add((new_stencil, current_anchor))
+    return stencils
 
 
 def get_stencils(row: str, anchor_points: set[int], length: int) -> list[str]:
@@ -97,15 +200,10 @@ def get_anchor_points(board: list[str]):
     return row_anchor_points, col_anchor_points
 
 
-def transpose_board(board):
-    split_board = np.array([list(x) for x in board])
-    transposed_board = ["".join(x) for x in split_board.T]
-    return transposed_board
-
-
-def get_file_words(rack, board, file, anchors, length, scoring_fn, trie, vertical=False):
+def get_file_words(rack, board, file, anchors, length, scoring_fn, trie, anchor_allowed_chars, vertical=False):
     words = []
-    stencils = get_stencils(board[file], anchors, length)
+    stencils = get_reduced_stencils(
+        board, file, anchors, length, anchor_allowed_chars)
     for stencil, anchor in stencils:
         stencil_words = trie.traverse(rack, stencil)
         scores = [scoring_fn(word, anchor, file, vertical)
@@ -126,6 +224,8 @@ def get_playable_words(game, trie: Trie):
     if game.current_player == 0 and game.scores[0] == 0:
         row_anchor_points[7].add(7)
         col_anchor_points[7].add(7)
+    anchor_allowed_chars = get_anchor_allowed_chars(game.rows, [
+        row_anchor_points, col_anchor_points], rack, trie)
     for length in range(2, 8):
         for row_index, anchors in enumerate(row_anchor_points):
             words = get_file_words(
@@ -135,7 +235,8 @@ def get_playable_words(game, trie: Trie):
                 anchors=anchors,
                 length=length,
                 scoring_fn=game.get_score,
-                trie=trie
+                trie=trie,
+                anchor_allowed_chars=anchor_allowed_chars[0]
             )
             playable_words.extend(words)
     board = game.cols
@@ -149,6 +250,7 @@ def get_playable_words(game, trie: Trie):
                 length=length,
                 scoring_fn=game.get_score,
                 trie=trie,
+                anchor_allowed_chars=anchor_allowed_chars[1],
                 vertical=True
             )
             playable_words.extend(words)
@@ -212,7 +314,6 @@ def get_total_score(word, loc, file, board, letter_multipliers, word_multipliers
     return total_score
 
 
-# ToDo: Use * to represent blanks.
 # Perform 26 searches with an uppercase version of each letter
 # Store uppercase scores as 0 (on board too)
 if __name__ == "__main__":
@@ -232,5 +333,5 @@ if __name__ == "__main__":
     #                      "graph": graph}, setup="from collections import Counter")
     # result = timer.repeat(3, number=500)
     # print(f"500 loops, best of 3: {min(result)/500:.2e} sec per loop")
-    print(f"Results:")
+    print("Results:")
     print(graph.traverse(Counter(word), stencil))
