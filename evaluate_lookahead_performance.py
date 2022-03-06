@@ -11,11 +11,10 @@ if __name__ == "__main__":
 
     turn_times = []
 
-    with open("./game.log", "w") as log_file:
-        env = ScrabbleEnv([GreedyAgent, stochasticAgent],
-                          corpus_file, log_file)
-        while not env.game_over:
-            t = env.step()
-            turn_times.append(t)
-            print(f"Thinking time: {t:.2f}s")
+    env = ScrabbleEnv([GreedyAgent, stochasticAgent],
+                      corpus_file)
+    while not env.game_over:
+        t = env.step()
+        turn_times.append(t)
+        print(f"Thinking time: {t:.2f}s")
     print(env.game.scores)
