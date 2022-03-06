@@ -36,6 +36,7 @@ class StochasticLookaheadAgent:
         self.n_candidates = n_candidates
         self.n_samples = n_samples
         self.expected_score = None
+        self.prev_score = None
 
     def step(self, game: ScrabbleGame):
         all_words = get_playable_words(game, self.trie)
@@ -48,5 +49,5 @@ class StochasticLookaheadAgent:
             game, self.trie, candidates, self.n_samples)
         best_word, best_score = candidates[np.argmax(modified_scores)]
         self.expected_score = np.max(modified_scores)
-        print(f"Expected net score: {np.max(modified_scores):.2f}")
+        self.prev_score = best_score
         return best_word, best_score

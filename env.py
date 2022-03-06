@@ -33,19 +33,14 @@ class ScrabbleEnv:
         self.game.reset()
 
     def step(self):
-        start = perf_counter()
         player_index = self.game.current_player
         agent = self.agents[player_index]
-        print(agent.__class__.__name__)
-        print(f"Rack: {stringify_counter(self.game.racks[player_index])}")
         played_word, score = agent.step(self.game)
-        print(played_word, score)
         if played_word:
             self.game_over = self.game.play(*played_word)
         else:
             self.game_over = self.game.pass_turn()
-        end = perf_counter()
-        return end - start
+        return played_word, score
 
 
 if __name__ == "__main__":
