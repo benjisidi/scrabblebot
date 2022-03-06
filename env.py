@@ -34,11 +34,11 @@ class ScrabbleEnv:
         start = perf_counter()
         player_index = self.game.current_player
         agent = self.agents[player_index]
-        # print(agent.__class__.__name__)
+        print(agent.__class__.__name__)
         # Print rack as str
-        # print(f"Rack: {stringify_counter(self.game.racks[player_index])}")
+        print(f"Rack: {stringify_counter(self.game.racks[player_index])}")
         played_word, score = agent.step(self.game)
-        # print(played_word, score)
+        print(played_word, score)
         if played_word:
             self.game_over = self.game.play(*played_word)
         else:
@@ -56,14 +56,14 @@ if __name__ == "__main__":
     turn_times = []
 
     def stochasticAgent(x): return StochasticLookaheadAgent(
-        x, n_candidates=4, n_samples=300)
-    for repeat in trange(10):
-        env = ScrabbleEnv([GreedyAgent, stochasticAgent],
-                          corpus_file)
-        while not env.game_over:
-            t = env.step()
-            # env.game.show(label_files=True)
-            turn_times.append(t)
-        tqdm.write(str(env.game.scores))
+        x, n_candidates=4, n_samples=100)
+    env = ScrabbleEnv([GreedyAgent, stochasticAgent],
+                        corpus_file)
+    while not env.game_over:
+        t = env.step()
+        # env.game.show(label_files=True)
+        turn_times.append(t)
+        print(f"Thinking time: {t:.2f}s")
+    print(env.game.scores)
     print(f"Times after {len(turn_times)} turns:")
     print(f"Min: {np.min(turn_times)}\tMax: {np.max(turn_times)}\tAvg: {np.mean(turn_times)}\tStd:{np.std(turn_times)}")

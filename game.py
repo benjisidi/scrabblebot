@@ -44,20 +44,15 @@ class ScrabbleGame:
         self.game_over = False
 
     def draw_letters(self, n, letter_pool=None):
+        remove_from_bag = False
         if letter_pool is None:
+            remove_from_bag = True
             letter_pool = self.bag
-        alphabet = list(string.ascii_lowercase+"*")
-        letters = ""
-        alphabet_counts = list(map(lambda x: letter_pool[x], alphabet))
-        for _ in range(min(n, letter_pool.total())):
-            letter = np.random.choice(
-                list(string.ascii_lowercase+"*"),
-                p=alphabet_counts/np.sum(alphabet_counts)
-            )
-            letter_pool[letter] -= 1
-            alphabet_counts = list(map(lambda x: letter_pool[x], alphabet))
-            letters += letter
-        return Counter(letters)
+        letter_list = list(letter_pool.elements())
+        letters = Counter(np.random.choice(letter_list, replace=False, size=min(n, len(letter_list))))
+        if remove_from_bag:
+            self.bag -= letters
+        return letters
 
     def save_board(self, filepath: str) -> None:
         pass
@@ -135,11 +130,12 @@ class ScrabbleGame:
         output_simils[0][0] = np.inf
         for j in range(1, n-1):
             least_similar = np.argmin(
-                np.sum(output_simils, axis=0))
+                np.mean(output_simils, axis=0))
             output_racks.append(ghost_racks[least_similar])
             output_simils[j] = [(output_racks[j] & rack).total()
                                 for rack in ghost_racks]
             output_simils[0][least_similar] = np.inf
+        return output_racks
 
     def play(self, word: str, loc: int, file: int, vertical=False, ghost=False) -> bool:
         """

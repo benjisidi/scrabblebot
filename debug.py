@@ -7,4 +7,6 @@ if __name__ == "__main__":
     start = perf_counter()
     racks = env.game.generate_ghost_racks(100, 0)
     end = perf_counter()
-    print(end - start)
+    print(racks)
+    print(f"{end - start:.2f}s")
+    

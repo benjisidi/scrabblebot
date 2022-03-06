@@ -2,24 +2,22 @@ from functools import partial
 from multiprocessing import Pool
 import numpy as np
 from game import ScrabbleGame
+from trie import Trie
 from util import get_playable_words
 
 
-def process_candidate(candidate, game, trie, n_its):
-    best_score = 0
-    best_it_score = 0
+def process_candidate(candidate: str, game:ScrabbleGame, trie: Trie, n_its: int):
     ghost_game = game.ghost_play(*candidate[0])
-    for _ in range(n_its):
-        ghost_game.ghost_rack(game.current_player)
-        words = get_playable_words(
-            ghost_game, trie)
+    ghost_racks = game.generate_ghost_racks(n_its, visible_rack=game.current_player)
+    candidate_scores = []
+    for rack in ghost_racks:
+        words = get_playable_words(ghost_game, trie, rack=rack)
         if len(words) > 0:
             best_opposing_word, best_it_score = words[np.argmax(
                 list(map(lambda x: x[1], words))
             )]
-        if best_it_score > best_score:
-            best_score = best_it_score
-    return best_score
+            candidate_scores.append(best_it_score)
+    return np.mean(candidate_scores)
 
 
 def stochastic_lookahead(game: ScrabbleGame, trie, candidates, sample_size):
@@ -47,4 +45,5 @@ class StochasticLookaheadAgent:
         modified_scores = stochastic_lookahead(
             game, self.trie, candidates, self.n_samples)
         best_word, best_score = candidates[np.argmax(modified_scores)]
+        print(f"Expected net score: {np.max(modified_scores):.2f}")
         return best_word, best_score

@@ -215,8 +215,9 @@ def get_file_words(rack, board, file, anchors, length, scoring_fn, trie, anchor_
     return words
 
 
-def get_playable_words(game, trie: Trie):
-    rack = game.racks[game.current_player]
+def get_playable_words(game, trie: Trie, rack = None):
+    if rack is None:
+        rack = game.racks[game.current_player]
     playable_words = []
     board = game.rows
     row_anchor_points, col_anchor_points = get_anchor_points(board)
