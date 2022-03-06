@@ -13,7 +13,7 @@ from util import get_scrabble_trie, stringify_counter
 
 
 class ScrabbleEnv:
-    def __init__(self, agents, corpus_file, random_state=None):
+    def __init__(self, agents, corpus_file, log_file=None, random_state=None):
         if random_state:
             np.random.set_state(random_state)
         with open("./logs/prev_state.pickle", "wb") as f:
@@ -23,9 +23,11 @@ class ScrabbleEnv:
         with open(corpus_file, "r") as f:
             corpus = f.read().splitlines()
         trie = get_scrabble_trie(corpus_file)
-        self.game = ScrabbleGame(len(agents), constants, corpus)
+        self.game = ScrabbleGame(
+            len(agents), constants, corpus, log_file=log_file)
         self.agents = [Agent(trie) for Agent in agents]
         self.game_over = False
+        self.expected_score = None
 
     def reset(self):
         self.game.reset()
@@ -35,7 +37,6 @@ class ScrabbleEnv:
         player_index = self.game.current_player
         agent = self.agents[player_index]
         print(agent.__class__.__name__)
-        # Print rack as str
         print(f"Rack: {stringify_counter(self.game.racks[player_index])}")
         played_word, score = agent.step(self.game)
         print(played_word, score)
@@ -57,13 +58,16 @@ if __name__ == "__main__":
 
     def stochasticAgent(x): return StochasticLookaheadAgent(
         x, n_candidates=4, n_samples=100)
-    env = ScrabbleEnv([GreedyAgent, stochasticAgent],
-                        corpus_file)
-    while not env.game_over:
-        t = env.step()
-        # env.game.show(label_files=True)
-        turn_times.append(t)
-        print(f"Thinking time: {t:.2f}s")
+
+    with open("./game.log", "w") as log_file:
+        env = ScrabbleEnv([GreedyAgent, GreedyAgent],
+                          corpus_file, log_file)
+        while not env.game_over:
+            t = env.step()
+            # env.game.show(label_files=True)
+            turn_times.append(t)
+            print(f"Thinking time: {t:.2f}s")
     print(env.game.scores)
     print(f"Times after {len(turn_times)} turns:")
     print(f"Min: {np.min(turn_times)}\tMax: {np.max(turn_times)}\tAvg: {np.mean(turn_times)}\tStd:{np.std(turn_times)}")
+    env.game.show()

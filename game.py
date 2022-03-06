@@ -7,12 +7,12 @@ import numpy as np
 from matplotlib.colors import ListedColormap
 from matplotlib.transforms import IdentityTransform, ScaledTranslation
 
-from util import (get_anchor_points, get_secondary_words, get_total_score,
+from util import (get_anchor_points, get_secondary_words, get_total_score, stringify_counter,
                   transpose_board)
 
 
 class ScrabbleGame:
-    def __init__(self, n_players, constants, corpus):
+    def __init__(self, n_players, constants, corpus, log_file=None):
         self.rows = ["_"*15]*15
         self.cols = ["_"*15]*15
         self.row_letter_multipliers = np.array(
@@ -30,6 +30,7 @@ class ScrabbleGame:
         self.racks = [self.draw_letters(7) for _ in range(n_players)]
         self.players_passed = [False for _ in range(n_players)]
         self.game_over = False
+        self.log_file = log_file
 
     def reset(self, constants):
         self.row_letter_multipliers = np.array(
@@ -49,7 +50,8 @@ class ScrabbleGame:
             remove_from_bag = True
             letter_pool = self.bag
         letter_list = list(letter_pool.elements())
-        letters = Counter(np.random.choice(letter_list, replace=False, size=min(n, len(letter_list))))
+        letters = Counter(np.random.choice(
+            letter_list, replace=False, size=min(n, len(letter_list))))
         if remove_from_bag:
             self.bag -= letters
         return letters
@@ -166,9 +168,12 @@ class ScrabbleGame:
         if loc + len(word) - 1 > 14:
             raise ValueError(
                 f"Word {word} is too long to be played in position [{file},{loc}]")
-
         # Get score and add it to player's total
         score = self.get_score(word, loc, file, vertical)
+        if self.log_file is not None:
+            self.log_file.write(
+                f"{self.current_player},{','.join(self.rows)},{','.join([stringify_counter(rack) for rack in self.racks])},{word},{loc},{file},{vertical},{score}\n"
+            )
         self.scores[self.current_player] += score
 
         # Add word to file

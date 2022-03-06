@@ -6,9 +6,10 @@ from trie import Trie
 from util import get_playable_words
 
 
-def process_candidate(candidate: str, game:ScrabbleGame, trie: Trie, n_its: int):
+def process_candidate(candidate: str, game: ScrabbleGame, trie: Trie, n_its: int):
     ghost_game = game.ghost_play(*candidate[0])
-    ghost_racks = game.generate_ghost_racks(n_its, visible_rack=game.current_player)
+    ghost_racks = game.generate_ghost_racks(
+        n_its, visible_rack=game.current_player)
     candidate_scores = []
     for rack in ghost_racks:
         words = get_playable_words(ghost_game, trie, rack=rack)
@@ -34,6 +35,7 @@ class StochasticLookaheadAgent:
         self.trie = trie
         self.n_candidates = n_candidates
         self.n_samples = n_samples
+        self.expected_score = None
 
     def step(self, game: ScrabbleGame):
         all_words = get_playable_words(game, self.trie)
@@ -45,5 +47,6 @@ class StochasticLookaheadAgent:
         modified_scores = stochastic_lookahead(
             game, self.trie, candidates, self.n_samples)
         best_word, best_score = candidates[np.argmax(modified_scores)]
+        self.expected_score = np.max(modified_scores)
         print(f"Expected net score: {np.max(modified_scores):.2f}")
         return best_word, best_score

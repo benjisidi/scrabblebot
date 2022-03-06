@@ -9,4 +9,3 @@ if __name__ == "__main__":
     end = perf_counter()
     print(racks)
     print(f"{end - start:.2f}s")
-    
