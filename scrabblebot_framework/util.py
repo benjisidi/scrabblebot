@@ -6,6 +6,14 @@ import numpy as np
 from .trie import LengthAwareTrie, Trie
 
 
+def map_rows_to_values(board, score_lookup):
+    values = np.zeros((15, 15))
+    for i, row in enumerate(board):
+        for j, char in enumerate(row):
+            values[i][j] = score_lookup[char]
+    return values
+
+
 def transpose_board(board):
     split_board = np.array([list(x) for x in board])
     transposed_board = ["".join(x) for x in split_board.T]

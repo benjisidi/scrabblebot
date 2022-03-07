@@ -25,7 +25,7 @@ class ScrabbleGame:
         self.n_players = n_players
         self.scores = [0 for _ in range(n_players)]
         self.corpus = set(corpus)
-        self.score_lookup = constants["scores"]
+        self.score_lookup = constants["scores"].copy()
         self.bag = Counter(constants["freqs"])
         self.racks = [self.draw_letters(7) for _ in range(n_players)]
         self.players_passed = [False for _ in range(n_players)]
@@ -33,16 +33,21 @@ class ScrabbleGame:
         self.log_file = log_file
 
     def reset(self, constants):
+        self.rows = ["_"*15]*15
+        self.cols = ["_"*15]*15
         self.row_letter_multipliers = np.array(
             constants["initial_letter_multipliers"])
         self.row_word_multipliers = np.array(
             constants["initial_word_multipliers"])
+        self.col_letter_multipliers = self.row_letter_multipliers.T
+        self.col_word_multipliers = self.row_word_multipliers.T
         self.scores = [0 for _ in range(self.n_players)]
         self.bag = Counter(constants["freqs"])
         self.racks = [self.draw_letters(7)
                       for _ in range(self.n_players)]
         self.players_passed = [False for _ in range(self.n_players)]
         self.game_over = False
+        self.current_player = 0
 
     def draw_letters(self, n, letter_pool=None):
         remove_from_bag = False

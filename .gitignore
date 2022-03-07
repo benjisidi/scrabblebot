@@ -159,3 +159,8 @@ cython_debug/
 # Log files
 logs/
 results/
+
+# CNN stuff
+cnn_data/
+cnn_checkpoints/
+*.npy
