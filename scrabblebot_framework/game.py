@@ -7,8 +7,8 @@ import numpy as np
 from matplotlib.colors import ListedColormap
 from matplotlib.transforms import IdentityTransform, ScaledTranslation
 
-from util import (get_anchor_points, get_secondary_words, get_total_score, stringify_counter,
-                  transpose_board)
+from .util import (get_anchor_points, get_secondary_words, get_total_score, stringify_counter,
+                   transpose_board)
 
 
 class ScrabbleGame:

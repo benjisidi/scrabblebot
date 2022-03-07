@@ -155,6 +155,7 @@ cython_debug/
 *.lprof
 *.prof
 
+.vscode/
 # Log files
 logs/
-.vscode/
+results/

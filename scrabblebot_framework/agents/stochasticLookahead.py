@@ -1,9 +1,9 @@
 from functools import partial
 from multiprocessing import Pool
 import numpy as np
-from game import ScrabbleGame
-from trie import Trie
-from util import get_playable_words
+from ..game import ScrabbleGame
+from ..trie import Trie
+from ..util import get_playable_words
 
 
 def process_candidate(candidate: str, game: ScrabbleGame, trie: Trie, n_its: int):
@@ -35,19 +35,16 @@ class StochasticLookaheadAgent:
         self.trie = trie
         self.n_candidates = n_candidates
         self.n_samples = n_samples
-        self.expected_score = None
-        self.prev_score = None
 
     def step(self, game: ScrabbleGame):
         all_words = get_playable_words(game, self.trie)
         if len(all_words) == 0:
-            return False, 0
+            return False, 0, {}
         candidate_indices = np.argsort(list(map(lambda x: x[1], all_words)))
         candidates = [all_words[i]
                       for i in candidate_indices[-self.n_candidates:]]
         modified_scores = stochastic_lookahead(
             game, self.trie, candidates, self.n_samples)
         best_word, best_score = candidates[np.argmax(modified_scores)]
-        self.expected_score = np.max(modified_scores)
-        self.prev_score = best_score
-        return best_word, best_score
+        expected_score = np.max(modified_scores)
+        return best_word, best_score, {"expected_score": expected_score}

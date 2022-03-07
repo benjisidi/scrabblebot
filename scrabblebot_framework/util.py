@@ -3,7 +3,7 @@ from functools import cache
 from time import perf_counter
 import numpy as np
 
-from trie import LengthAwareTrie, Trie
+from .trie import LengthAwareTrie, Trie
 
 
 def transpose_board(board):
@@ -23,7 +23,7 @@ def get_scrabble_trie(corpus_loc):
     with open(corpus_loc, "r") as f:
         corpus = f.read().splitlines()
     graph.parse_corpus(corpus)
-    return graph
+    return graph, corpus
 
 
 def get_secondary_template(board: list[str], file: int, anchor_point: int) -> str:
