@@ -11,6 +11,8 @@ def process_candidate(candidate: str, game: ScrabbleGame, trie: Trie, n_its: int
     ghost_racks = game.generate_ghost_racks(
         n_its, visible_rack=game.current_player)
     candidate_scores = []
+    candidate_words = []
+    print(candidate)
     for rack in ghost_racks:
         words = get_playable_words(ghost_game, trie, rack=rack)
         if len(words) > 0:
@@ -18,6 +20,10 @@ def process_candidate(candidate: str, game: ScrabbleGame, trie: Trie, n_its: int
                 list(map(lambda x: x[1], words))
             )]
             candidate_scores.append(best_it_score)
+            candidate_words.append(best_opposing_word)
+    print(f"Min: {np.min(candidate_scores)}\tMax: {np.max(candidate_scores)}\tMean: {np.mean(candidate_scores):.2f}\tStd: {np.std(candidate_scores):.2f}")
+    print(
+        f"Min: {candidate_words[np.argmin(candidate_scores)]}\nMax: {candidate_words[np.argmax(candidate_scores)]}")
     return np.mean(candidate_scores)
 
 

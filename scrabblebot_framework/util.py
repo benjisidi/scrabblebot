@@ -1,5 +1,5 @@
 from collections import Counter
-from functools import cache
+from functools import cache, partial
 from time import perf_counter
 import numpy as np
 
@@ -216,19 +216,25 @@ def get_file_words(rack, board, file, anchors, length, scoring_fn, trie, anchor_
         stencil_words = trie.traverse(rack, stencil)
         scores = [scoring_fn(word, anchor, file, vertical)
                   for word in stencil_words]
+        if len(scores) and isinstance(scores[0], tuple):
+            if np.any(np.array(list(map(lambda x: x[0], scores))) < 0):
+                raise ValueError(f"Invalid word")
+        else:
+            if np.any(np.array(scores) < 0):
+                raise ValueError(f"Invalid word")
         stencil_words = map(lambda word: (
             word, anchor, file, vertical), stencil_words)
-        words.extend(
-            filter(lambda word: word[1] > 0, zip(stencil_words, scores)))
+        words.extend(zip(stencil_words, scores))
     return words
 
 
-def get_playable_words(game, trie: Trie, rack=None):
+def get_playable_words(game, trie: Trie, rack=None, return_raw_scores=False):
     if rack is None:
         rack = game.racks[game.current_player]
     playable_words = []
     board = game.rows
     row_anchor_points, col_anchor_points = get_anchor_points(board)
+    scoring_fn = partial(game.get_score, return_raw_scores=return_raw_scores)
     # Turn 0: no letters on board, need to add anchor in centre
     if game.current_player == 0 and game.scores[0] == 0:
         row_anchor_points[7].add(7)
@@ -243,7 +249,7 @@ def get_playable_words(game, trie: Trie, rack=None):
                 file=row_index,
                 anchors=anchors,
                 length=length,
-                scoring_fn=game.get_score,
+                scoring_fn=scoring_fn,
                 trie=trie,
                 anchor_allowed_chars=anchor_allowed_chars[0]
             )
@@ -257,7 +263,7 @@ def get_playable_words(game, trie: Trie, rack=None):
                 file=col_index,
                 anchors=anchors,
                 length=length,
-                scoring_fn=game.get_score,
+                scoring_fn=scoring_fn,
                 trie=trie,
                 anchor_allowed_chars=anchor_allowed_chars[1],
                 vertical=True
@@ -298,28 +304,36 @@ def get_secondary_words(word: str, loc: int, file: int, board: list[str]):
     return secondary_words
 
 
-def get_word_score(word, loc, file, letter_multipliers, word_multipliers, score_lookup):
+def get_word_score(word, loc, file, letter_multipliers, word_multipliers, score_lookup, return_raw_scores=False):
     raw_tile_scores = np.array(
         list(map(lambda x: score_lookup[x], list(word))))
     letter_values = np.dot(
         raw_tile_scores, letter_multipliers[file][loc:loc+len(word)])
     score = letter_values * np.prod(
         word_multipliers[file][loc:loc+len(word)])
+    if return_raw_scores:
+        return score, np.sum(raw_tile_scores)
     return score
 
 
-def get_total_score(word, loc, file, board, letter_multipliers, word_multipliers, letter_multipliers_perp, word_multipliers_perp, score_lookup):
+def get_total_score(word, loc, file, board, letter_multipliers, word_multipliers, letter_multipliers_perp, word_multipliers_perp, score_lookup, return_raw_scores=False):
     total_score = 0
     existing_tiles = np.array(list(board[file][loc:loc+len(word)]))
     n_played_tiles = np.sum(np.where(existing_tiles == "_", 1, 0))
     if n_played_tiles == 7:
         total_score += 50
-    total_score += get_word_score(word, loc, file,
-                                  letter_multipliers, word_multipliers, score_lookup)
+    if return_raw_scores:
+        total_score, raw_score = get_word_score(word, loc, file,
+                                                letter_multipliers, word_multipliers, score_lookup, return_raw_scores=return_raw_scores)
+    else:
+        total_score += get_word_score(word, loc, file,
+                                      letter_multipliers, word_multipliers, score_lookup)
     secondary_words = get_secondary_words(word, loc, file, board)
     for secondary_word, secondary_loc, secondary_file in secondary_words:
         total_score += get_word_score(secondary_word, secondary_loc, secondary_file,
                                       letter_multipliers_perp, word_multipliers_perp, score_lookup)
+    if return_raw_scores:
+        return total_score, raw_score
     return total_score
 
 

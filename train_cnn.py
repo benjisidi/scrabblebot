@@ -20,25 +20,25 @@ class ScrabbleDataset(torch.utils.data.Dataset):
 
 
 if __name__ == "__main__":
-    # comet_logger = CometLogger(
-    #     api_key="Wj297ZgqXDxiYjjIRFrtGFQ6K",
-    # )
-    # # Force logger to init experiment for live logging
-    # exp = comet_logger.experiment
-    model = BoardValueCNN({"lr": 1e-4})
+    comet_logger = CometLogger(
+        api_key="Wj297ZgqXDxiYjjIRFrtGFQ6K",
+    )
+    # Force logger to init experiment for live logging
+    exp = comet_logger.experiment
+    model = BoardValueCNN({"lr": 1e-6})
     train_dataset = ScrabbleDataset(
         "./cnn_data/60k/cnn_train_data.npy", "./cnn_data/60k/cnn_train_labels.npy")
     test_dataset = ScrabbleDataset(
         "./cnn_data/60k/cnn_test_data.npy", "./cnn_data/60k/cnn_test_labels.npy")
     train_dataloader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=64, shuffle=True)
+        train_dataset, batch_size=8, shuffle=True)
     test_dataloader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=64, shuffle=True)
+        test_dataset, batch_size=8, shuffle=True)
     trainer = pl.Trainer(
         gpus=1,
         default_root_dir="./cnn_checkpoints",
-        max_epochs=10000,
-        # logger=comet_logger
+        max_epochs=5000,
+        logger=comet_logger
     )
     trainer.fit(model=model, train_dataloaders=train_dataloader,
                 val_dataloaders=test_dataloader)

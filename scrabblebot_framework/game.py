@@ -1,4 +1,5 @@
 import json
+from multiprocessing.sharedctypes import Value
 import string
 from collections import Counter
 from copy import deepcopy
@@ -67,7 +68,7 @@ class ScrabbleGame:
     def load_board(self, filepath: str) -> None:
         pass
 
-    def get_score(self, word, loc, file, vertical=False):
+    def get_score(self, word, loc, file, vertical=False, return_raw_scores=False):
         if vertical:
             board = self.cols
             letter_multipliers = self.col_letter_multipliers
@@ -81,7 +82,11 @@ class ScrabbleGame:
             letter_multipliers_perp = self.col_letter_multipliers
             word_multipliers_perp = self.col_word_multipliers
         secondary_words = get_secondary_words(word, loc, file, board)
-        if not np.all([x in self.corpus for x in list(map(lambda x: x[0], secondary_words))]):
+        if not np.all([x.lower() in self.corpus for x in list(map(lambda x: x[0], secondary_words))]):
+            # raise ValueError(
+            #     f"Invalid word: {word} produces invalid secondary words")
+            if return_raw_scores:
+                return -1, -1
             return -1
         return get_total_score(
             word=word,
@@ -92,7 +97,8 @@ class ScrabbleGame:
             word_multipliers=word_multipliers,
             letter_multipliers_perp=letter_multipliers_perp,
             word_multipliers_perp=word_multipliers_perp,
-            score_lookup=self.score_lookup
+            score_lookup=self.score_lookup,
+            return_raw_scores=return_raw_scores
         )
 
     def pass_turn(self) -> bool:
@@ -123,6 +129,7 @@ class ScrabbleGame:
             7, letter_pool=letter_pool)
 
     def generate_ghost_racks(self, n, visible_rack):
+        # Fixme: Was debugging CNN
         letter_pool = Counter()
         letter_pool += self.bag
         for i, rack in enumerate(self.racks):
@@ -130,6 +137,7 @@ class ScrabbleGame:
                 letter_pool += rack
         ghost_racks = [self.draw_letters(
             7, letter_pool=letter_pool) for i in range(10000)]
+        return ghost_racks[:n]
         output_racks = [ghost_racks[0]]
         output_simils = np.zeros((n-1, 10000))
         output_simils[0] = [(ghost_racks[0] & rack).total()

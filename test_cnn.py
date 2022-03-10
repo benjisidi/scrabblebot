@@ -28,9 +28,8 @@ def get_cnn_datapoint(game):
 def test_cnn():
     env = ScrabbleEnv([GreedyAgent, GreedyAgent],
                       "tournament_official")
-    model = BoardValueCNN()
-    model.load_from_checkpoint(
-        "./cnn_checkpoints/comet-default/0902da1957e047f1a006ccfa32719acb/checkpoints/epoch=2151-step=4303.ckpt")
+    model = BoardValueCNN.load_from_checkpoint(
+        "./cnn_checkpoints/lightning_logs/version_4/checkpoints/epoch=5-step=5627.ckpt")
     while not env.game_over:
         datum = get_cnn_datapoint(env.game)
         print(datum)

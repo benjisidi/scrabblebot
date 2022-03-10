@@ -14,6 +14,7 @@ class BoardValueCNN(pl.LightningModule):
         maxpool: 3x5x5
         conv2: 3x3x3
         """
+        print(hparams)
         self.HPARAMS = hparams
         self.conv1 = nn.Conv2d(
             in_channels=3,
