@@ -8,8 +8,8 @@ import numpy as np
 from matplotlib.colors import ListedColormap
 from matplotlib.transforms import IdentityTransform, ScaledTranslation
 
-from .util import (get_anchor_points, get_secondary_words, get_total_score, stringify_counter,
-                   transpose_board)
+from .utils.util import (get_anchor_points, get_secondary_words, get_total_score, stringify_counter,
+                         transpose_board)
 
 
 class ScrabbleGame:
@@ -83,11 +83,8 @@ class ScrabbleGame:
             word_multipliers_perp = self.col_word_multipliers
         secondary_words = get_secondary_words(word, loc, file, board)
         if not np.all([x.lower() in self.corpus for x in list(map(lambda x: x[0], secondary_words))]):
-            # raise ValueError(
-            #     f"Invalid word: {word} produces invalid secondary words")
-            if return_raw_scores:
-                return -1, -1
-            return -1
+            raise ValueError(
+                f"Invalid word: {word} produces invalid secondary words")
         return get_total_score(
             word=word,
             loc=loc,

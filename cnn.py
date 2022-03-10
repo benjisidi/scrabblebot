@@ -1,9 +1,9 @@
 import string
 import numpy as np
-from scrabblebot_framework.env import ScrabbleEnv
-from scrabblebot_framework.agents.greedy import GreedyAgent
-from scrabblebot_framework.util import map_rows_to_values
-from scrabblebot_framework.board_value_cnn import BoardValueCNN
+from .scrabblebot_framework.env import ScrabbleEnv
+from .scrabblebot_framework.agents.greedy import GreedyAgent
+from .scrabblebot_framework.utils.util import map_rows_to_values
+from .scrabblebot_framework.board_value_cnn import BoardValueCNN
 import torch
 from torch.nn import functional as F
 

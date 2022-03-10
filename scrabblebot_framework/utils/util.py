@@ -3,7 +3,7 @@ from functools import cache, partial
 from time import perf_counter
 import numpy as np
 
-from .trie import LengthAwareTrie, Trie
+from ..trie import LengthAwareTrie, Trie
 
 
 def map_rows_to_values(board, score_lookup):
@@ -198,7 +198,7 @@ def get_anchor_points(board: list[str]):
     row_anchor_points = row_anchor_points[1:-1]
     for i in range(len(row_anchor_points)):
         row_anchor_points[i] = set(
-            map(lambda x: x-1, filter(lambda x: x > 0 and x < 15, row_anchor_points[i])))
+            map(lambda x: x-1, filter(lambda x: x > 0 and x < 16, row_anchor_points[i])))
     # Find the transpose of our sets for the column anchor points
     col_anchor_points = [set() for _ in board]
     for col in range(len(board)):
@@ -216,12 +216,6 @@ def get_file_words(rack, board, file, anchors, length, scoring_fn, trie, anchor_
         stencil_words = trie.traverse(rack, stencil)
         scores = [scoring_fn(word, anchor, file, vertical)
                   for word in stencil_words]
-        if len(scores) and isinstance(scores[0], tuple):
-            if np.any(np.array(list(map(lambda x: x[0], scores))) < 0):
-                raise ValueError(f"Invalid word")
-        else:
-            if np.any(np.array(scores) < 0):
-                raise ValueError(f"Invalid word")
         stencil_words = map(lambda word: (
             word, anchor, file, vertical), stencil_words)
         words.extend(zip(stencil_words, scores))

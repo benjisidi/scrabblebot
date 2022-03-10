@@ -3,7 +3,7 @@ from multiprocessing import Pool
 import numpy as np
 from ..game import ScrabbleGame
 from ..trie import Trie
-from ..util import get_playable_words
+from ..utils.util import get_playable_words
 
 
 def process_candidate(candidate: str, game: ScrabbleGame, trie: Trie, n_its: int):

@@ -1,7 +1,7 @@
 import numpy as np
 
 from ..game import ScrabbleGame
-from ..util import get_playable_words
+from ..utils.util import get_playable_words
 
 
 class GreedyAgent:

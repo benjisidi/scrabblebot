@@ -1,7 +1,7 @@
 import string
 import numpy as np
 from scrabblebot_framework.env import ScrabbleEnv
-from scrabblebot_framework.util import map_rows_to_values
+from scrabblebot_framework.utils.util import map_rows_to_values
 from scrabblebot_framework.agents.greedy import GreedyAgent
 from tqdm import tqdm
 

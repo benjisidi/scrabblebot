@@ -4,7 +4,7 @@ from ..game import ScrabbleGame
 from ..utils.util import get_playable_words
 
 
-class LongestWordAgent:
+class DummyAgent:
     def __init__(self, trie):
         self.trie = trie
 
@@ -12,7 +12,7 @@ class LongestWordAgent:
         all_words = get_playable_words(game, self.trie)
         if len(all_words) == 0:
             return False, 0, {}
-        longest_word, longest_score = all_words[np.argmax(
-            list(map(lambda x: len(x[0][0]), all_words))
+        best_word, best_score = all_words[np.argmax(
+            list(map(lambda x: x[1], all_words))
         )]
-        return longest_word, longest_score, {}
+        return best_word, best_score, {}
